@@ -1,7 +1,8 @@
 # wasure
 finding the things you've forgetten about
 
-A tool which makes use of Open Source and Public datasets to identify third and fourth party dependencies.
+A tool which makes use of Open Source and Public datasets to identify third and fourth party dependencies
+specifically to identify ones which could be abused.
 
 ### Scanners
 
@@ -21,3 +22,6 @@ Downloads webpages to identify links, included assets such as JavaScript, Style 
 
 **Version Scanner** (not implemented)   
 (not implemented) Identify versions of JavaScript includes
+
+**Reputation Scanner** (not implemented)   
+(not implemented) Lookup domain and IP on abuse lists
