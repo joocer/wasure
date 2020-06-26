@@ -13,11 +13,11 @@ Downloads webpages to identify links, included assets such as JavaScript, Style 
 
 (not implemented) Registrant records for domain names
 
-**IP Scanner** (partially implmented)
+**IP Scanner** (partially implmented)   
 (implemented)  Owner, geolocation
 
-**Port Scanner** (not implemented)
+**Port Scanner** (not implemented)   
 (not implemented) Open/Closed status and banners from small subset of ports (22,80,443)
 
-**Version Scanner** (not implemented)
+**Version Scanner** (not implemented)   
 (not implemented) Identify versions of JavaScript includes
