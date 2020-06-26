@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import hashlib
 import datetime
-from pprint import pprint
+from .scanner import wasure_scanner
 
 HTTPResponse = requests.packages.urllib3.response.HTTPResponse
 orig_HTTPResponse__init__ = HTTPResponse.__init__
@@ -59,34 +59,66 @@ def certificate_summary(cert):
     }
     return summary
 
-def get_http_response(url):
-    r = requests.get(url = url, verify=True)
-    page_hash = hashlib.sha224(r.text.encode('utf-8')).hexdigest()
-    soup = BeautifulSoup(r.text, 'html.parser')
+class http_scanner(wasure_scanner):
+    _url = None
 
-    # hrefs
-    for anchor in soup.find_all('a'):
-        print({ 'source': url, 'target': requests.compat.urljoin(url, anchor.get('href')), 'relationship': 'link' })
+    def __init__(self, record):
+        self._url = record
 
-    # javascript includes
-    for script in soup.find_all('script'):
-        print({ 'source' : url, 'target': requests.compat.urljoin(url, script.get('src')), 'relationship': 'script', 'sri': script.get('integrity') })
-    
-    # stylesheet includes
-    for style in soup.find_all('link'):
-        print({ 'source': url, 'target': requests.compat.urljoin(url, style.get('href')), 'relationship': 'style', 'sri': script.get('integrity') })
+    def execute_scan(self):
+        # 1) result
+        # 2) relationships
+        # 3) additional assets 
 
-    return { 
-        'url': url, 
-        'hash': page_hash, 
-        'status': r.status_code, 
-        'duration': r.elapsed.total_seconds(), 
-        'size': len(r.text), 
-        'headers': r.headers, 
-        'cert': certificate_summary(r.peer_certificate),
-        'body': r.text 
-        }
+        r = requests.get(url = self._url, verify=True)
+        page_hash = hashlib.sha224(r.text.encode('utf-8')).hexdigest()
+        soup = BeautifulSoup(r.text, 'html.parser')
 
+        relationships = []
+        assets = []
 
+        # hrefs
+        for anchor in soup.find_all('a'):
+            target = requests.compat.urljoin(self._url, anchor.get('href'))
+            relationships.append({ 
+                'source': self._url, 
+                'target': target, 
+                'relationship': 'link' 
+                })
+            assets.append({ 'type': 'http', 'asset': target })
 
-print(get_http_response('https://branleys.com'))
+        # javascript includes
+        for script in soup.find_all('script'):
+            target = requests.compat.urljoin(self._url, script.get('src'))
+            relationships.append({ 
+                'source' : self._url, 
+                'target': target, 
+                'relationship': 'script', 
+                'sri': script.get('integrity') 
+                })
+            assets.append({ 'type': 'http', 'asset': target })
+            assets.append({ 'type': 'version', 'asset': target })
+        
+        # stylesheet includes
+        for style in soup.find_all('link'):
+            target = requests.compat.urljoin(self._url, style.get('href'))
+            relationships.append({ 
+                'source': self._url, 
+                'target': target, 
+                'relationship': 'style', 
+                'sri': script.get('integrity') 
+                })
+            assets.append({ 'type': 'http', 'asset': target })
+
+        result =  { 
+            'url': self._url, 
+            'hash': page_hash, 
+            'status': r.status_code, 
+            'duration': r.elapsed.total_seconds(), 
+            'size': len(r.text), 
+            'headers': r.headers, 
+            'cert': certificate_summary(r.peer_certificate),
+            'body': r.text 
+            }
+
+        return result, relationships, assets
