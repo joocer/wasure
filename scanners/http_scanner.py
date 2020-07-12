@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import hashlib
 import datetime
-from .scanner import wasure_scanner
+from .wasure_scanner import wasure_scanner
 
 HTTPResponse = requests.packages.urllib3.response.HTTPResponse
 orig_HTTPResponse__init__ = HTTPResponse.__init__
@@ -42,6 +42,8 @@ def certificate_summary(cert):
     valid_until = datetime.datetime.strptime(valid_until, "%Y%m%d%H%M%SZ")
 
     summary = { 
+        'asset'             : cert.get_subject().commonName,
+        'type'              : 'certificate',
         'subject_cn'        : cert.get_subject().commonName,
         'subject_org'       : cert.get_subject().organizationName,
         'subject_ou'        : cert.get_subject().organizationalUnitName,
@@ -111,13 +113,14 @@ class http_scanner(wasure_scanner):
             assets.append({ 'type': 'http', 'asset': target })
 
         result =  { 
+            'asset': self._url,
+            'type': 'http',
             'url': self._url, 
             'hash': page_hash, 
             'status': r.status_code, 
             'duration': r.elapsed.total_seconds(), 
             'size': len(r.text), 
             'headers': r.headers, 
-            'cert': certificate_summary(r.peer_certificate),
             'body': r.text 
             }
 
