@@ -2,38 +2,42 @@ import requests
 from bs4 import BeautifulSoup
 import hashlib
 import datetime
-from .wasure_scanner import wasure_scanner
+from .scanner import wasure_scanner
 
-HTTPResponse = requests.packages.urllib3.response.HTTPResponse
-orig_HTTPResponse__init__ = HTTPResponse.__init__
-def new_HTTPResponse__init__(self, *args, **kwargs):
-    orig_HTTPResponse__init__(self, *args, **kwargs)
-    try:
-        self.peer_certificate = self._connection.peer_certificate
-    except AttributeError:
-        pass
-HTTPResponse.__init__ = new_HTTPResponse__init__
+def init():
+    HTTPResponse = requests.packages.urllib3.response.HTTPResponse
+    orig_HTTPResponse__init__ = HTTPResponse.__init__
 
-HTTPAdapter = requests.adapters.HTTPAdapter
-orig_HTTPAdapter_build_response = HTTPAdapter.build_response
-def new_HTTPAdapter_build_response(self, request, resp):
-    response = orig_HTTPAdapter_build_response(self, request, resp)
-    try:
-        response.peer_certificate = resp.peer_certificate
-    except AttributeError:
-        pass
-    return response
-HTTPAdapter.build_response = new_HTTPAdapter_build_response
+    def new_HTTPResponse__init__(self, *args, **kwargs):
+        orig_HTTPResponse__init__(self, *args, **kwargs)
+        try:
+            self.peer_certificate = self._connection.peer_certificate
+        except AttributeError:
+            pass
+    HTTPResponse.__init__ = new_HTTPResponse__init__
 
-HTTPSConnection = requests.packages.urllib3.connection.HTTPSConnection
-orig_HTTPSConnection_connect = HTTPSConnection.connect
-def new_HTTPSConnection_connect(self):
-    orig_HTTPSConnection_connect(self)
-    try:
-        self.peer_certificate = self.sock.connection.get_peer_certificate()
-    except AttributeError:
-        pass
-HTTPSConnection.connect = new_HTTPSConnection_connect
+    HTTPAdapter = requests.adapters.HTTPAdapter
+    orig_HTTPAdapter_build_response = HTTPAdapter.build_response
+
+    def new_HTTPAdapter_build_response(self, request, resp):
+        response = orig_HTTPAdapter_build_response(self, request, resp)
+        try:
+            response.peer_certificate = resp.peer_certificate
+        except AttributeError:
+            pass
+        return response
+    HTTPAdapter.build_response = new_HTTPAdapter_build_response
+
+    HTTPSConnection = requests.packages.urllib3.connection.HTTPSConnection
+    orig_HTTPSConnection_connect = HTTPSConnection.connect
+    
+    def new_HTTPSConnection_connect(self):
+        orig_HTTPSConnection_connect(self)
+        try:
+            self.peer_certificate = self.sock.connection.get_peer_certificate()
+        except AttributeError:
+            pass
+    HTTPSConnection.connect = new_HTTPSConnection_connect
 
 def certificate_summary(cert):
     valid_from = cert.get_notBefore().decode()
@@ -42,8 +46,6 @@ def certificate_summary(cert):
     valid_until = datetime.datetime.strptime(valid_until, "%Y%m%d%H%M%SZ")
 
     summary = { 
-        'asset'             : cert.get_subject().commonName,
-        'type'              : 'certificate',
         'subject_cn'        : cert.get_subject().commonName,
         'subject_org'       : cert.get_subject().organizationName,
         'subject_ou'        : cert.get_subject().organizationalUnitName,
@@ -62,17 +64,16 @@ def certificate_summary(cert):
     return summary
 
 class http_scanner(wasure_scanner):
-    _url = None
 
-    def __init__(self, record):
-        self._url = record
-
-    def execute_scan(self):
+    @staticmethod
+    def execute_scan(record):
         # 1) result
         # 2) relationships
         # 3) additional assets 
 
-        r = requests.get(url = self._url, verify=True)
+        init()
+
+        r = requests.get(url = record, verify=True)
         page_hash = hashlib.sha224(r.text.encode('utf-8')).hexdigest()
         soup = BeautifulSoup(r.text, 'html.parser')
 
@@ -81,9 +82,9 @@ class http_scanner(wasure_scanner):
 
         # hrefs
         for anchor in soup.find_all('a'):
-            target = requests.compat.urljoin(self._url, anchor.get('href'))
+            target = requests.compat.urljoin(record, anchor.get('href'))
             relationships.append({ 
-                'source': self._url, 
+                'source': record, 
                 'target': target, 
                 'relationship': 'link' 
                 })
@@ -91,9 +92,9 @@ class http_scanner(wasure_scanner):
 
         # javascript includes
         for script in soup.find_all('script'):
-            target = requests.compat.urljoin(self._url, script.get('src'))
+            target = requests.compat.urljoin(record, script.get('src'))
             relationships.append({ 
-                'source' : self._url, 
+                'source' : record, 
                 'target': target, 
                 'relationship': 'script', 
                 'sri': script.get('integrity') 
@@ -103,9 +104,9 @@ class http_scanner(wasure_scanner):
         
         # stylesheet includes
         for style in soup.find_all('link'):
-            target = requests.compat.urljoin(self._url, style.get('href'))
+            target = requests.compat.urljoin(record, style.get('href'))
             relationships.append({ 
-                'source': self._url, 
+                'source': record, 
                 'target': target, 
                 'relationship': 'style', 
                 'sri': script.get('integrity') 
@@ -113,14 +114,13 @@ class http_scanner(wasure_scanner):
             assets.append({ 'type': 'http', 'asset': target })
 
         result =  { 
-            'asset': self._url,
-            'type': 'http',
-            'url': self._url, 
+            'url': record, 
             'hash': page_hash, 
             'status': r.status_code, 
             'duration': r.elapsed.total_seconds(), 
             'size': len(r.text), 
             'headers': r.headers, 
+            #'cert': certificate_summary(r.peer_certificate),
             'body': r.text 
             }
 
