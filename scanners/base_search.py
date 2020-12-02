@@ -1,7 +1,17 @@
-class wasure_scanner():
+import abc
+import enum
 
-    @staticmethod
-    def execute_scan(record):
+class ASSET_TYPES(enum.Enum):
+    IP: "ip"
+    HOST: "host"
+
+
+class BaseSearch(abc.ABC):
+
+    def supports_asset(self, asset_type:ASSET_TYPES) -> bool:
+        raise NotImplementedError()
+
+    def execute_scan(self, record):
         """ 
         Execute the scan. Returns three values:
         1) result
@@ -16,4 +26,4 @@ class wasure_scanner():
 
         ADDITIONAL ASSETS are 'new' assets to add to the scanning backlog.
         """ 
-        pass
+        raise NotImplementedError()

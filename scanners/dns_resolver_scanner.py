@@ -1,10 +1,12 @@
 import dns.resolver
-from .scanner import wasure_scanner
+from .base_search import BaseSearch, ASSET_TYPES
 
-class dns_resolver_scanner(wasure_scanner):
+class DNSResolverScanner(BaseSearch):
 
-    @staticmethod
-    def execute_scan(record):
+    def supports_asset(self, asset_type:ASSET_TYPES) -> bool:
+        return asset_type in [ASSET_TYPES.HOST]
+
+    def execute_scan(self, record):
         IP_TYPES = ['AAAA', 'A']
         NAME_SERVER_TYPES = ['NS']
         ALIAS_TYPES = ['CNAME']
@@ -48,4 +50,4 @@ class dns_resolver_scanner(wasure_scanner):
                         })
             except:
                 pass
-        return None, relationships, assets
+        return relationships, assets
