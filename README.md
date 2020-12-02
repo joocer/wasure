@@ -6,13 +6,16 @@ specifically to identify ones which could be abused.
 
 ## Scanners
 
+**DNS Scanner**
+Resolve DNS A, AAAA, CNAME and NS to identify IP and Name Servers.
+
+**Certificate Transparency Scanner**
+Identify assets through certificate issuance logs.
+
+## Not Implmented
+
 **HTTP Scanner** (partially implemented)  
 Downloads webpages to identify links, included assets such as JavaScript, Style Sheets and TLS Certificates.
-
-**DNS Scanner** (partially implemented)  
-(implemented) Resolve DNS A, AAAA, CNAME and NS to identify IP and Name Servers.
-
-(not implemented) Registrant records for domain names
 
 **IP Scanner** (partially implmented)   
 (implemented)  Owner, geolocation
